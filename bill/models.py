@@ -1,45 +1,81 @@
-from django.db import models
-from django import utils
 import datetime
+
+from django import utils
+from django.contrib.auth.models import AbstractUser
+from django.db import models
+from django.db.models import F, Sum
+from django.db.models.signals import post_save
+from django.dispatch import receiver
 from django.urls import reverse
-from django.db.models import Sum, F
 
 # Create your models here.
 
-class Client(models.Model):
+
+class User(AbstractUser):
+    email = models.EmailField(unique=True, null=False, blank=False)
+    USER_TYPE_CHOICES = (
+        (0, 'admin'),
+        (1, 'client'),
+        (2, 'fournisseur'),
+    )
+    user_type = models.PositiveSmallIntegerField(choices=USER_TYPE_CHOICES)
+    USERNAME_FIELD = 'email'
+    REQUIRED_FIELDS = ['user_type', 'username']
+
+
+class Admin(models.Model):
+    user = models.OneToOneField(User, on_delete=models.CASCADE)
     SEXE = (
         ('M', 'Masculin'),
         ('F', 'Feminin')
     )
-    nom = models.CharField(max_length=50, null=True, blank=True)
-    prenom = models.CharField(max_length=50, null=True, blank=True)
-    adresse = models.TextField(null=True, blank=True)
+    nom = models.CharField(max_length = 50, null=True, blank=True)
+    prenom = models.CharField(max_length = 50, null=True, blank=True)
+    adresse = models.CharField(max_length = 50, null=True, blank=True)
     tel = models.CharField(max_length = 10, null=True, blank=True)
     sexe = models.CharField(max_length=1, choices = SEXE)
-    
+
+    def __str__(self):
+        return self.user.email
+
+class Client(models.Model):
+    user = models.OneToOneField(User, on_delete=models.CASCADE)
+    SEXE = (
+        ('M', 'Masculin'),
+        ('F', 'Feminin')
+    )
+    nom = models.CharField(max_length = 50, null=True, blank=True)
+    prenom = models.CharField(max_length = 50, null=True, blank=True)
+    adresse = models.CharField(max_length = 50, null=True, blank=True)
+    tel = models.CharField(max_length = 10, null=True, blank=True)
+    sexe = models.CharField(max_length=1, choices = SEXE)
+
     def __str__(self):
         return self.nom + ' ' + self.prenom
-
 
 class Fournisseur(models.Model):
+    user = models.OneToOneField(User, on_delete=models.CASCADE)
     SEXE = (
         ('M', 'Masculin'),
         ('F', 'Feminin')
     )
-    nom = models.CharField(max_length=50, null=True, blank=True)
-    prenom = models.CharField(max_length=50, null=True, blank=True)
-    adresse = models.TextField(null=True, blank=True)
+    nom = models.CharField(max_length = 50, null=True, blank=True)
+    prenom = models.CharField(max_length = 50, null=True, blank=True)
+    adresse = models.CharField(max_length = 50, null=True, blank=True)
     tel = models.CharField(max_length = 10, null=True, blank=True)
     sexe = models.CharField(max_length=1, choices = SEXE)
-    
+
     def __str__(self):
         return self.nom + ' ' + self.prenom
     
+
+
 class Categorie(models.Model):
     nom = models.CharField(max_length=50)
     
     def __str__(self):
         return self.nom   
+
 
 class Produit(models.Model):
     designation = models.CharField(max_length=50)
@@ -70,4 +106,3 @@ class LigneFacture(models.Model):
         constraints = [
             models.UniqueConstraint(fields=['produit', 'facture'], name="produit-facture")
         ]
-    

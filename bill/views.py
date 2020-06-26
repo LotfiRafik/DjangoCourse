@@ -1,8 +1,10 @@
 from bootstrap_datepicker_plus import DatePickerInput
 from django import forms
 from django.contrib import messages
+from django.contrib.auth.hashers import make_password
 from django.contrib.messages.views import SuccessMessageMixin
 from django.db import models
+from django.http import HttpResponseRedirect
 from django.shortcuts import get_object_or_404, render
 from django.urls import reverse
 from django.views.generic.base import TemplateView
@@ -11,7 +13,7 @@ from django.views.generic.edit import CreateView, DeleteView, UpdateView
 from django.views.generic.list import ListView
 
 import django_tables2 as tables
-from bill.models import Client, Facture, Fournisseur, LigneFacture
+from bill.models import Admin, Client, Facture, Fournisseur, LigneFacture, User
 from crispy_forms.helper import FormHelper
 from crispy_forms.layout import HTML, Button, Submit
 from django_tables2.config import RequestConfig
@@ -195,7 +197,7 @@ class ClientListView(ListView):
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         #Total chiffre d'affaire de chaque client
-        clients = Client.objects.all().annotate(chiffre=models.Sum(models.ExpressionWrapper(models.F('factures__lignes__qte'),output_field=models.FloatField()) * models.F('factures__lignes__produit__prix')))
+        clients = Client.objects.filter().annotate(chiffre=models.Sum(models.ExpressionWrapper(models.F('factures__lignes__qte'),output_field=models.FloatField()) * models.F('factures__lignes__produit__prix')))
         table = ClientTable(clients)
         RequestConfig(self.request, paginate={"per_page": 8}).configure(table)
         context['table'] = table
@@ -220,6 +222,13 @@ class ClientCreateView(CreateView):
         form.helper.add_input(Button('cancel', 'Annuler', css_class='btn-secondary', onclick="window.history.back()"))
         self.success_url = reverse('clients')
         return form
+
+    def form_valid(self, form):
+        self.object = form.save()
+        user = self.object.user
+        user.user_type = 1
+        user.save()
+        return HttpResponseRedirect(self.get_success_url())
 
     def get_context_data(self, **kwargs):
         ctx = super(ClientCreateView, self).get_context_data(**kwargs)
@@ -338,7 +347,7 @@ class FournisseurTable(tables.Table):
 #Fournisseur list view 
 class FournisseurListView(ListView):
     template_name = 'bill/list.html'
-    model = Client
+    model = Fournisseur
     
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
@@ -368,6 +377,13 @@ class FournisseurCreateView(CreateView):
         form.helper.add_input(Button('cancel', 'Annuler', css_class='btn-secondary', onclick="window.history.back()"))
         self.success_url = reverse('fournisseurs')
         return form
+
+    def form_valid(self, form):
+        self.object = form.save()
+        user = self.object.user
+        user.user_type = 2
+        user.save()
+        return HttpResponseRedirect(self.get_success_url())
 
     def get_context_data(self, **kwargs):
         ctx = super(FournisseurCreateView, self).get_context_data(**kwargs)

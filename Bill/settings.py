@@ -36,7 +36,6 @@ CRISPY_TEMPLATE_PACK = 'bootstrap4'
 # Application definition
 
 INSTALLED_APPS = [
-    'bill.apps.BillConfig',
     'bootstrap_datepicker_plus',
     'crispy_forms',
     'bootstrap4',
@@ -47,6 +46,7 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'bill',
 ]
 
 MIDDLEWARE = [
@@ -89,6 +89,11 @@ DATABASES = {
         'NAME': os.path.join(BASE_DIR, 'db.sqlite3'),
     }
 }
+
+ATOMIC_REQUESTS = True
+
+
+AUTH_USER_MODEL = 'bill.User'
 
 
 # Password validation
@@ -133,3 +138,8 @@ STATICFILES_DIRS = [
 #    os.path.join(BASE_DIR, 'static'),
     os.path.join(BASE_DIR, 'media'),
 ]
+
+
+LOGIN_REDIRECT_URL = '/bill/clients/'
+LOGOUT_REDIRECT_URL = '/bill/clients/'
+
