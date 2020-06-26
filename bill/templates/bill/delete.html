@@ -1,0 +1,11 @@
+{% extends 'bill/base.html' %}
+{% load bootstrap4 django_tables2 crispy_forms_tags %}
+{% block content%}
+  <h2>Suppression d'une ligne facture</h2>
+    <br>
+	<form method="post">{% csrf_token %}
+    <p>Confirmez-vous la suppression de {{ object }} ?</p>
+    <button type="submit" class="btn btn-danger">Confirmer</button>
+    <a href="{{request.META.HTTP_REFERER}}" class="btn btn-secondary">Annuler</a>
+	</form>
+{% endblock %}
