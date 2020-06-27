@@ -1,5 +1,7 @@
 from django.urls import  path, re_path, include
 from bill import views
+from django.contrib.auth.decorators import login_required
+
 urlpatterns = [
     re_path(r'^facture_detail/(?P<pk>\d+)/$', views.facture_detail_view, name='facture_detail'),
 
@@ -39,6 +41,31 @@ urlpatterns = [
     path('fournisseur_update/<int:pk>/', views.FournisseurUpdateView.as_view(), name='fournisseur_update'),
     #Supression d'un fournisseur
     path('fournisseur_delete/<int:pk>/', views.FournisseurtDeleteView.as_view(), name='fournisseur_delete'),
+
+
+
+    #Liste des produits
+    path('produits/', views.ProduitListView.as_view(), name='produits'),
+    
+    #Ajouter produit au panier
+    path('add_produit_panier/<int:pk>/', views.ajouter_panier_view, name='add_produit_panier'),
+    
+    #Panier
+    path('panier/', views.panier_detail_view, name='panier'),
+    
+    
+
+    #Liste des commandes
+    path('commandes/', login_required(views.CommandeListView.as_view()), name='commandes'),
+
+    #Detail d'une commande 
+    path('commande_table_detail/<int:pk>/', views.CommandeDetailView.as_view(), name='commande_table_detail'),
+
+    #Créer une commande
+    path('confirme_panier/', views.confirme_panier_view, name='confirme_panier'),
+
+
+
 
     #Dashboard
     path('dashboard/', views.dashboard, name='dashboard'),

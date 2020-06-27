@@ -1,0 +1,22 @@
+{% extends 'bill/base.html' %}
+{% load bootstrap4 django_tables2 crispy_forms_tags %}
+{% block content%}
+  <h2>Ajouter Produit {{ produit }} au Panier </h2>
+  <div class="col-lg-5">
+  <!-- on affiche details du produit -->
+  <table>
+      <tr>
+          <td>{{ produit.designation }}</td>
+          <td>{{ produit.prix }}</td>
+          <td>{{ produit.categorie }}</td>
+          <td>{{ produit.photo }}</td>
+      </tr>
+  </table>
+  <form method='post' >
+      {% csrf_token %}
+      <label for="quantity">Inserer la Quantité que vous voulez :</label>
+      <input type="number" id="qte" name="qte" min="1">
+      <input type="submit" value="Submit">
+  </form>
+  </div>
+{% endblock %}

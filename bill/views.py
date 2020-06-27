@@ -1,6 +1,8 @@
 from bootstrap_datepicker_plus import DatePickerInput
 from django import forms
 from django.contrib import messages
+from django.contrib.auth.decorators import login_required
+
 from django.contrib.auth.hashers import make_password
 from django.contrib.messages.views import SuccessMessageMixin
 from django.db import models
@@ -13,7 +15,7 @@ from django.views.generic.edit import CreateView, DeleteView, UpdateView
 from django.views.generic.list import ListView
 
 import django_tables2 as tables
-from bill.models import Admin, Client, Facture, Fournisseur, LigneFacture, User
+from bill.models import Admin, Client, Facture, Fournisseur, LigneFacture, User, Produit, Commande, LigneCommande
 from crispy_forms.helper import FormHelper
 from crispy_forms.layout import HTML, Button, Submit
 from django_tables2.config import RequestConfig
@@ -195,6 +197,7 @@ class ClientListView(ListView):
     model = Client
     
     def get_context_data(self, **kwargs):
+
         context = super().get_context_data(**kwargs)
         #Total chiffre d'affaire de chaque client
         clients = Client.objects.filter().annotate(chiffre=models.Sum(models.ExpressionWrapper(models.F('factures__lignes__qte'),output_field=models.FloatField()) * models.F('factures__lignes__produit__prix')))
@@ -436,3 +439,166 @@ class FournisseurtDeleteView(DeleteView):
     def get_success_url(self):
         success_url = reverse('fournisseurs')
         return success_url
+
+
+#-----------------------------------------------------------------------------------------------------------------------------------------------------------
+# produit table , updateview , deleteview , createview , listview + modify urls
+#--------
+
+
+#django_tables2 produit table
+class ProduitTable(tables.Table):
+
+    add_panier =   '<a href="{% url "add_produit_panier" pk=record.id %}" class="btn btn-info">Ajouter</a>'
+
+    Panier   = tables.TemplateColumn(add_panier) 
+
+    class Meta:
+        model = Produit
+        template_name = "django_tables2/bootstrap4.html"
+        fields = ('designation','categorie', 'prix', 'photo')
+
+
+#Produit list view 
+class ProduitListView(ListView):
+    template_name = 'bill/list.html'
+    model = Produit
+    
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        produits = Produit.objects.all()
+        table = ProduitTable(produits)
+        RequestConfig(self.request, paginate={"per_page": 5}).configure(table)
+        context['table'] = table
+        #URL qui pointe sur la vue de création
+        context['creation_url']  = "/bill/fournisseur_table_create/"
+        context['object'] = 'produit'
+        context['title'] = 'La liste des produits :'
+
+        return context
+
+
+@login_required
+def ajouter_panier_view(request, pk):
+
+    context={}
+    if request.method == 'GET':
+        #return detail of the product and input to enter the qte of the product , butom submit
+        produit = get_object_or_404(Produit, id=pk)
+        context['produit'] = produit
+        return render(request, 'bill/ajouter_produit_panier.html', context)
+    elif request.method == 'POST':
+        #update panier (session)
+        produit = get_object_or_404(Produit, id=pk)
+        if 'qte' not in request.POST:
+            qte = 1
+        else:
+            qte = int(request.POST['qte'])
+            if qte < 0:
+                qte = 1
+        
+        if 'panier' not in request.session:
+            request.session['panier'] = {}
+        request.session['panier'][int(pk)] = qte
+        request.session.modified = True
+        return HttpResponseRedirect(reverse('produits'))
+
+
+#django_tables2 panier table
+class PanierTable(tables.Table):
+
+    produit = tables.Column()
+    qte = tables.Column()
+
+    class Meta:
+        template_name = "django_tables2/bootstrap4.html"
+        fields = ('produit','qte')
+
+@login_required
+def panier_detail_view(request):
+    panier = []
+    context = {}
+    
+    if 'panier' in request.session:
+        for pk,qte in request.session['panier'].items():
+            produit = get_object_or_404(Produit, id=pk)
+            panier.append({"produit":produit,"qte":qte})
+
+    table = PanierTable(panier)
+    RequestConfig(request, paginate={"per_page": 5}).configure(table)
+    context['table'] = table
+
+    return render(request, 'bill/panier.html', context)
+
+
+@login_required
+def confirme_panier_view(request):
+
+    if 'panier' in request.session and len(request.session['panier']) > 0:
+        commande = Commande.objects.create(client=request.user.client)
+        for pk,qte in request.session['panier'].items():
+            produit = get_object_or_404(Produit, id=pk)
+            LigneCommande.objects.create(produit=produit,qte=qte,commande=commande)
+        request.session['panier'] = {}
+    return HttpResponseRedirect(reverse('commandes'))
+
+        
+
+#django_tables2 client table
+class CommandeTable(tables.Table):
+
+    lignes = '<a href="{% url "commande_table_detail" pk=record.id %}" class="btn btn-info">Lignes</a>'
+    Lignes   = tables.TemplateColumn(lignes) 
+
+    
+    class Meta:
+        model = Commande
+        template_name = "django_tables2/bootstrap4.html"
+        fields = ('client','date', 'valide')
+
+
+
+#Commande list view 
+class CommandeListView(ListView):
+    
+    template_name = 'bill/commandes.html'
+    model = Commande
+    
+    def get_context_data(self, **kwargs):
+
+        context = super().get_context_data(**kwargs)
+        commandes = Commande.objects.filter(client=self.request.user.client)
+        table = CommandeTable(commandes)
+        RequestConfig(self.request, paginate={"per_page": 8}).configure(table)
+        context['table'] = table
+        context['object'] = 'Commande'
+        context['title'] = 'La liste des commandes :'
+
+        return context
+
+
+
+class LigneCommandeTable(tables.Table):
+    class Meta:
+        model = LigneCommande
+        template_name = "django_tables2/bootstrap4.html"
+        fields = ('produit__designation','produit__id', 'produit__prix', 'qte')
+
+
+
+class CommandeDetailView(DetailView):
+    template_name = 'bill/commandes.html'
+    model = Commande
+    
+    def get_context_data(self, **kwargs):
+        context = super(CommandeDetailView, self).get_context_data(**kwargs)
+        commande = Commande.objects.get(id=self.kwargs.get('pk'))
+        table = LigneCommandeTable(LigneCommande.objects.filter(commande=commande))
+        RequestConfig(self.request, paginate={"per_page": 5}).configure(table)
+        context['table'] = table
+        context['object'] = 'LigneCommande'
+        context['title'] = 'La liste des produits de la commande : ' + str(self.get_object())
+
+        return context
+
+

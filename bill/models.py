@@ -82,6 +82,7 @@ class Produit(models.Model):
     prix = models.FloatField(default=0)
     fournisseur = models.ForeignKey(Fournisseur,on_delete=models.CASCADE,related_name='produits',null=True)
     categorie = models.ForeignKey(Categorie,on_delete=models.CASCADE,related_name='produits',null=True)
+    photo = models.ImageField(default=None)
     def __str__(self):
         return self.designation
 
@@ -105,4 +106,28 @@ class LigneFacture(models.Model):
     class Meta:
         constraints = [
             models.UniqueConstraint(fields=['produit', 'facture'], name="produit-facture")
+        ]
+
+
+class Commande(models.Model):
+    client = models.ForeignKey(Client, on_delete=models.CASCADE, related_name='commandes')
+    date = models.DateField(default=utils.timezone.now)
+    valide = models.BooleanField(default=False)
+
+    def get_absolute_url(self):
+        return reverse('commande_detail', kwargs={'pk': self.id})
+
+    def __str__(self):
+        return str(self.client)+' : '+ str(self.date)
+    
+    def total(self):
+        return self.lignes.all().aggregate(total=Sum(F("produit__prix") * F("qte"),output_field=models.FloatField()))
+
+class LigneCommande(models.Model):
+    produit = models.ForeignKey(Produit, on_delete=models.CASCADE,related_name="lignes_commande")
+    qte = models.IntegerField(default=1)
+    commande = models.ForeignKey(Commande, on_delete=models.CASCADE, related_name='lignes')
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(fields=['produit', 'commande'], name="produit-commande")
         ]

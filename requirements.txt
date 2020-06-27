@@ -2,4 +2,4 @@ django-bootstrap-datepicker-plus
 django-tables2
 django-crispy-forms
 bootstrap411
-
+pillow

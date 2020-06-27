@@ -143,3 +143,7 @@ STATICFILES_DIRS = [
 LOGIN_REDIRECT_URL = '/bill/clients/'
 LOGOUT_REDIRECT_URL = '/bill/clients/'
 
+
+
+SESSION_ENGINE = "django.contrib.sessions.backends.cache" 
+

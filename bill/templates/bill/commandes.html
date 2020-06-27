@@ -3,11 +3,9 @@
 {% block content%}
   <h2>{{ title }}</h2>
   <br><br>
-  <!-- on affiche un bouton pour ajouter un objet -->
-  <a href="{{ creation_url }}" class="btn btn-primary">Ajouter {{ object }}</a>
   <br><br>
   <div class="col-lg-6">
-  <!-- on affiche les lignes de la table des objets -->
+  <!-- on affiche les lignes de la table des commandes -->
 	{% render_table table %}
   </div>
 {% endblock %}
