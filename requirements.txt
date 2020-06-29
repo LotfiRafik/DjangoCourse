@@ -3,3 +3,6 @@ django-tables2
 django-crispy-forms
 bootstrap411
 pillow
+dotenv
+django-select2
+python-memcached

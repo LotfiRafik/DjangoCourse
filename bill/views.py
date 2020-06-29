@@ -2,7 +2,6 @@ from bootstrap_datepicker_plus import DatePickerInput
 from django import forms
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
-
 from django.contrib.auth.hashers import make_password
 from django.contrib.messages.views import SuccessMessageMixin
 from django.db import models
@@ -15,9 +14,11 @@ from django.views.generic.edit import CreateView, DeleteView, UpdateView
 from django.views.generic.list import ListView
 
 import django_tables2 as tables
-from bill.models import Admin, Client, Facture, Fournisseur, LigneFacture, User, Produit, Commande, LigneCommande
+from bill.models import (Admin, Client, Commande, Facture, Fournisseur,
+                         LigneCommande, LigneFacture, Produit, User)
 from crispy_forms.helper import FormHelper
 from crispy_forms.layout import HTML, Button, Submit
+from django_select2 import forms as s2forms
 from django_tables2.config import RequestConfig
 
 # Create your views here.
@@ -450,14 +451,25 @@ class FournisseurtDeleteView(DeleteView):
 class ProduitTable(tables.Table):
 
     add_panier =   '<a href="{% url "add_produit_panier" pk=record.id %}" class="btn btn-info">Ajouter</a>'
+    photo =   '<img src="{{ record.photo.url }}" alt="produit" width="200" height="200">'
+    photo   = tables.TemplateColumn(photo) 
 
     Panier   = tables.TemplateColumn(add_panier) 
 
     class Meta:
         model = Produit
         template_name = "django_tables2/bootstrap4.html"
-        fields = ('designation','categorie', 'prix', 'photo')
+        fields = ('designation','categorie', 'prix')
 
+
+class ProduitForm(forms.ModelForm):
+    class Meta:
+        model = Produit
+        fields = ("designation","categorie")
+        widgets = {
+            'designation': s2forms.Select2Widget,
+            'categorie': s2forms.Select2Widget
+        }
 
 #Produit list view 
 class ProduitListView(ListView):
@@ -469,13 +481,36 @@ class ProduitListView(ListView):
         produits = Produit.objects.all()
         table = ProduitTable(produits)
         RequestConfig(self.request, paginate={"per_page": 5}).configure(table)
+        pform = ProduitForm()
+        context['pform'] = pform
         context['table'] = table
         #URL qui pointe sur la vue de création
-        context['creation_url']  = "/bill/fournisseur_table_create/"
+        context['creation_url']  = "/bill/produit_table_create/"
         context['object'] = 'produit'
         context['title'] = 'La liste des produits :'
 
         return context
+
+
+class ProduitCreateView(CreateView):
+    model = Produit
+    template_name = 'bill/create.html'
+    fields = '__all__'
+    
+    def get_form(self, form_class=None):
+        form = super().get_form(form_class)
+        form.helper = FormHelper()
+
+        form.helper.add_input(Submit('submit','Créer', css_class='btn-primary'))
+        form.helper.add_input(Button('cancel', 'Annuler', css_class='btn-secondary', onclick="window.history.back()"))
+        self.success_url = reverse('produits')
+        return form
+
+    def get_context_data(self, **kwargs):
+        ctx = super(ProduitCreateView, self).get_context_data(**kwargs)
+        ctx['object'] = 'Produit'
+        ctx['title'] = "Création d'un Produit :"
+        return ctx
 
 
 @login_required
@@ -540,6 +575,7 @@ def confirme_panier_view(request):
             produit = get_object_or_404(Produit, id=pk)
             LigneCommande.objects.create(produit=produit,qte=qte,commande=commande)
         request.session['panier'] = {}
+        request.session.modified = True
     return HttpResponseRedirect(reverse('commandes'))
 
         
@@ -550,13 +586,19 @@ class CommandeTable(tables.Table):
     lignes = '<a href="{% url "commande_table_detail" pk=record.id %}" class="btn btn-info">Lignes</a>'
     Lignes   = tables.TemplateColumn(lignes) 
 
-    
     class Meta:
         model = Commande
         template_name = "django_tables2/bootstrap4.html"
         fields = ('client','date', 'valide')
 
+class CommandeTableAdmin(CommandeTable):
 
+    valider = '<a href="{% url "valider_commande" pk=record.id %}" class="btn btn-info">Valider </a>'
+    valider   = tables.TemplateColumn(valider) 
+    class Meta:
+        model = Commande
+        template_name = "django_tables2/bootstrap4.html"
+        fields = ('client','date', 'valide')
 
 #Commande list view 
 class CommandeListView(ListView):
@@ -567,8 +609,18 @@ class CommandeListView(ListView):
     def get_context_data(self, **kwargs):
 
         context = super().get_context_data(**kwargs)
-        commandes = Commande.objects.filter(client=self.request.user.client)
-        table = CommandeTable(commandes)
+
+        filter = {}
+        if self.request.user.is_authenticated:
+            if self.request.user.user_type == 1:
+                filter['client'] = self.request.user.client
+        commandes = Commande.objects.filter(**filter)
+
+        if self.request.user.user_type == 0:
+            table = CommandeTableAdmin(commandes)
+        elif self.request.user.user_type == 1:
+            table = CommandeTable(commandes)
+
         RequestConfig(self.request, paginate={"per_page": 8}).configure(table)
         context['table'] = table
         context['object'] = 'Commande'
@@ -602,3 +654,31 @@ class CommandeDetailView(DetailView):
         return context
 
 
+
+@login_required
+def valider_commande_view(request, pk):
+    try:
+        commande = Commande.objects.filter(id=pk)
+    except Commande.DoesNotExist:
+        raise Http404
+    if commande[0].valide == False:
+        commande.update(valide = True)
+        commande = commande[0]
+        facture = Facture.objects.create(client=commande.client,commande=commande)
+        for ligne in commande.lignes.all():
+            LigneFacture.objects.create(produit=ligne.produit,qte=ligne.qte,facture=facture)
+
+    return HttpResponseRedirect(reverse('commandes'))
+
+
+class AuthorWidget(s2forms.Select2Widget):
+    search_fields = [
+        "username__icontains",
+        "email__icontains",
+    ]
+
+
+class ProduitCreateView(ListView):
+    model = Produit
+    form_class = ProduitForm
+    success_url = "/"

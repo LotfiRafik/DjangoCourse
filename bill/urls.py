@@ -46,7 +46,11 @@ urlpatterns = [
 
     #Liste des produits
     path('produits/', views.ProduitListView.as_view(), name='produits'),
-    
+      
+    #Creation d'un produit
+    path('produit_table_create/', views.ProduitCreateView.as_view(), name='produit_table_create'),
+
+
     #Ajouter produit au panier
     path('add_produit_panier/<int:pk>/', views.ajouter_panier_view, name='add_produit_panier'),
     
@@ -65,7 +69,11 @@ urlpatterns = [
     path('confirme_panier/', views.confirme_panier_view, name='confirme_panier'),
 
 
+    #Valider une commande
+    path('valider_commande/<int:pk>/', views.valider_commande_view, name='valider_commande'),
 
+
+    path("book/create", views.ProduitCreateView.as_view(), name="book-create"),
 
     #Dashboard
     path('dashboard/', views.dashboard, name='dashboard'),

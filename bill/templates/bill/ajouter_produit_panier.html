@@ -4,17 +4,13 @@
   <h2>Ajouter Produit {{ produit }} au Panier </h2>
   <div class="col-lg-5">
   <!-- on affiche details du produit -->
-  <table>
-      <tr>
-          <td>{{ produit.designation }}</td>
-          <td>{{ produit.prix }}</td>
-          <td>{{ produit.categorie }}</td>
-          <td>{{ produit.photo }}</td>
-      </tr>
-  </table>
+  <label>Designation :</label> {{ produit.designation }}</br>
+  <label>Prix :</label> {{ produit.prix }}</br>
+  <hlabel2>Categorie :</label> {{ produit.categorie }}</br></br>
+  <img src="{{ produit.photo.url }}" alt="produit" width="250" height="250"></br></br></br>
   <form method='post' >
       {% csrf_token %}
-      <label for="quantity">Inserer la Quantité que vous voulez :</label>
+      <h4 for="quantity">Inserer la Quantité que vous voulez :</h4>
       <input type="number" id="qte" name="qte" min="1">
       <input type="submit" value="Submit">
   </form>
