@@ -2,6 +2,7 @@ from bootstrap_datepicker_plus import DatePickerInput
 from django import forms
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
+from django.contrib.auth.forms import UserCreationForm
 from django.contrib.auth.hashers import make_password
 from django.contrib.messages.views import SuccessMessageMixin
 from django.db import models
@@ -12,7 +13,6 @@ from django.views.generic.base import TemplateView
 from django.views.generic.detail import DetailView
 from django.views.generic.edit import CreateView, DeleteView, UpdateView
 from django.views.generic.list import ListView
-
 import django_tables2 as tables
 from bill.models import (Admin, Client, Commande, Facture, Fournisseur,
                          LigneCommande, LigneFacture, Produit, User)
@@ -20,7 +20,9 @@ from crispy_forms.helper import FormHelper
 from crispy_forms.layout import HTML, Button, Submit
 from django_select2 import forms as s2forms
 from django_tables2.config import RequestConfig
-
+from django.contrib.auth import login, authenticate
+from django.contrib.auth.decorators import permission_required
+from django.contrib.auth.mixins import PermissionRequiredMixin
 # Create your views here.
 
 def facture_detail_view(request, pk):
@@ -193,10 +195,11 @@ class ClientTable(tables.Table):
         fields = ('nom','prenom', 'adresse', 'tel' , 'sexe' )
 
 #Client list view 
-class ClientListView(ListView):
+class ClientListView(PermissionRequiredMixin,ListView):
     template_name = 'bill/list.html'
     model = Client
-    
+    permission_required = 'bill.view_client'
+
     def get_context_data(self, **kwargs):
 
         context = super().get_context_data(**kwargs)
@@ -241,12 +244,16 @@ class ClientCreateView(CreateView):
         return ctx
 
 
-class ClientUpdateView(UpdateView):
+class ClientUpdateView(PermissionRequiredMixin,SuccessMessageMixin,UpdateView):
     model = Client
     template_name = 'bill/update.html'
     fields = '__all__'
-    
+    success_message = "Le client a été mise à jour avec succès"
+    permission_required = 'bill.update_client'
+
     def get_form(self, form_class=None):
+        messages.warning(self.request, "Attention, vous allez modifier le client")
+
         form = super().get_form(form_class)
         form.helper = FormHelper()
 
@@ -462,14 +469,14 @@ class ProduitTable(tables.Table):
         fields = ('designation','categorie', 'prix')
 
 
-class ProduitForm(forms.ModelForm):
-    class Meta:
-        model = Produit
-        fields = ("designation","categorie")
-        widgets = {
-            'designation': s2forms.Select2Widget,
-            'categorie': s2forms.Select2Widget
-        }
+# class ProduitForm(forms.ModelForm):
+#     class Meta:
+#         model = Produit
+#         fields = ("designation","categorie")
+#         widgets = {
+#             'designation': s2forms.Select2Widget,
+#             'categorie': s2forms.Select2Widget
+#         }
 
 #Produit list view 
 class ProduitListView(ListView):
@@ -481,8 +488,8 @@ class ProduitListView(ListView):
         produits = Produit.objects.all()
         table = ProduitTable(produits)
         RequestConfig(self.request, paginate={"per_page": 5}).configure(table)
-        pform = ProduitForm()
-        context['pform'] = pform
+        # pform = ProduitForm()
+        # context['pform'] = pform
         context['table'] = table
         #URL qui pointe sur la vue de création
         context['creation_url']  = "/bill/produit_table_create/"
@@ -492,11 +499,11 @@ class ProduitListView(ListView):
         return context
 
 
-class ProduitCreateView(CreateView):
+class ProduitCreateView( PermissionRequiredMixin,CreateView):
     model = Produit
     template_name = 'bill/create.html'
     fields = '__all__'
-    
+    permission_required = 'bill.add_produit'
     def get_form(self, form_class=None):
         form = super().get_form(form_class)
         form.helper = FormHelper()
@@ -671,14 +678,41 @@ def valider_commande_view(request, pk):
     return HttpResponseRedirect(reverse('commandes'))
 
 
-class AuthorWidget(s2forms.Select2Widget):
-    search_fields = [
-        "username__icontains",
-        "email__icontains",
-    ]
 
 
-class ProduitCreateView(ListView):
-    model = Produit
-    form_class = ProduitForm
-    success_url = "/"
+class SignUpForm(UserCreationForm):
+    nom = forms.CharField(max_length=30, required=False, help_text='Optional.')
+    prenom = forms.CharField(max_length=30, required=False, help_text='Optional.')
+    email = forms.EmailField(max_length=254, help_text='Required. Inform a valid email address.')
+    SEXE = (
+        ('M', 'Masculin'),
+        ('F', 'Feminin')
+    )
+    adresse = forms.CharField(max_length = 50, required=False)
+    tel = forms.CharField(max_length = 10,required=False)
+    sexe = forms.ChoiceField(choices=SEXE)
+    class Meta:
+        model = User
+        fields = ('username', 'nom', 'prenom', 'email','adresse' , 'tel','sexe', 'password1', 'password2' , 'user_type')
+        widgets = {'user_type': forms.HiddenInput()}
+
+
+
+def signup(request):
+    if request.method == 'POST':
+        data = request.POST.copy()
+        data['user_type'] = 1
+        form = SignUpForm(data)
+        if form.is_valid():
+            user = form.save()
+            sexe = form.cleaned_data.get('sexe')
+            tel = form.cleaned_data.get('tel')
+            adresse = form.cleaned_data.get('adresse')
+            nom = form.cleaned_data.get('nom')
+            prenom = form.cleaned_data.get('prenom')
+            Client.objects.create(user=user,sexe=sexe,tel=tel,adresse=adresse,nom=nom,prenom=prenom)
+            login(request, user)
+            return HttpResponseRedirect(reverse('produits'))
+    else:
+        form = SignUpForm()
+    return render(request, 'registration/signup_client.html', {'form': form})

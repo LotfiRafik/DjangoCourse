@@ -2,7 +2,7 @@
 	<li>
 		<a class="list-group-item" href="{% url 'produits' %}" >Produits</a>
 	</li>
-	{% if user.is_authenticated %}
+	{% if user.is_authenticated  %}
 	<li>
 		<a class="list-group-item" href="{% url 'commandes' %}">Commandes</a>
 	</li>
@@ -11,7 +11,7 @@
     	<a class="list-group-item" href="{% url 'panier' %}">Mon Panier</a>
 	</li>
 	<li>
-		<a class="list-group-item" href="{% url 'client_table_detail' pk=user.pk %}">Mes Factures</a>
+		<a class="list-group-item" href="{% url 'client_table_detail' pk=user.client.pk %}">Mes Factures</a>
 	</li>
 	{% elif user.user_type == 0  %}
 	<li>

@@ -72,8 +72,9 @@ urlpatterns = [
     #Valider une commande
     path('valider_commande/<int:pk>/', views.valider_commande_view, name='valider_commande'),
 
+    #SIGN UP CLIENT
+    path('signup/', views.signup, name='signup'),
 
-    path("book/create", views.ProduitCreateView.as_view(), name="book-create"),
 
     #Dashboard
     path('dashboard/', views.dashboard, name='dashboard'),
