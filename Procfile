@@ -1,2 +1,2 @@
-web: gunicorn BillConfig.wsgi --log-file -
+web: gunicorn BillConfig.wsgi
 release: python manage.py migrate

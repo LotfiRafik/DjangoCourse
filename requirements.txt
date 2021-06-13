@@ -7,3 +7,4 @@ pillow
 python-dotenv
 django-select2
 python-memcached
+gunicorn
