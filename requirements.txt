@@ -1,8 +1,9 @@
 django-bootstrap-datepicker-plus
 django-tables2
 django-crispy-forms
-bootstrap411
+bootstrap4
+django-bootstrap4
 pillow
-dotenv
+python-dotenv
 django-select2
 python-memcached
